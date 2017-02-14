@@ -1,17 +1,17 @@
 FROM atbentley/nss-wrapper:centos7
 
-  RUN echo $'[gocd] \n\
-  name     = GoCD YUM Repository\n\
-  baseurl  = https://download.gocd.io\n\
-  enabled  = 1\n\
-  gpgcheck = 1\n\
-  gpgkey   = https://download.gocd.io/GOCD-GPG-KEY.asc' > /etc/yum.repos.d/gocd.repo && \
-  yum install -y java-1.8.0-openjdk git go-agent && yum clean all -y
+RUN echo $'[gocd] \n\
+name     = GoCD YUM Repository\n\
+baseurl  = https://download.gocd.io\n\
+enabled  = 1\n\
+gpgcheck = 1\n\
+gpgkey   = https://download.gocd.io/GOCD-GPG-KEY.asc' > /etc/yum.repos.d/gocd.repo && \
+yum install -y java-1.8.0-openjdk git go-agent && yum clean all -y
 
-  RUN chgrp -R 0 /var/lib/go-agent /usr/share/go-agent /var/log/go-agent /etc/default/go-agent /var/run/go-agent && \
-  chmod -R g+rw /var/lib/go-agent /usr/share/go-agent /var/log/go-agent /etc/default/go-agent /var/run/go-agent
+RUN chgrp -R 0 /var/lib/go-agent /usr/share/go-agent /var/log/go-agent /etc/default/go-agent /var/run/go-agent && \
+chmod -R g+rw /var/lib/go-agent /usr/share/go-agent /var/log/go-agent /etc/default/go-agent /var/run/go-agent
 
-  WORKDIR =/usr/share/go-agent
-  ENV DAEMON=N PRODUCTION_MODE=N USER_NAME=go
+WORKDIR =/usr/share/go-agent
+ENV DAEMON=N PRODUCTION_MODE=N USER_NAME=go
 
-  CMD ["/usr/share/go-agent/agent.sh"]
+CMD ["/usr/share/go-agent/agent.sh"]
