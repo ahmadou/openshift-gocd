@@ -27,24 +27,7 @@ objects:
     source:
       type: Dockerfile
       dockerfile: |-
-        FROM atbentley/nss-wrapper:centos7
-        EXPOSE 8153 8154
-
-        RUN echo $'[gocd] \n\
-        name     = GoCD YUM Repository\n\
-        baseurl  = https://download.gocd.io\n\
-        enabled  = 1\n\
-        gpgcheck = 1\n\
-        gpgkey   = https://download.gocd.io/GOCD-GPG-KEY.asc' > /etc/yum.repos.d/gocd.repo && \
-        yum install -y java-1.8.0-openjdk git go-server && yum clean all -y
-
-        RUN chgrp -R 0 /var/lib/go-server /etc/go /usr/share/go-server /var/log/go-server /etc/default/go-server && \
-        chmod -R g+rw /var/lib/go-server /etc/go /usr/share/go-server /var/log/go-server /etc/default/go-server
-
-        WORKDIR /var/lib/go-server
-        ENV USER_NAME=go
-
-        CMD ["java", "-jar", "/usr/share/go-server/go.jar"]
+        FROM atbentley/openshift-gocd-server:latest
     strategy:
       type: Docker
     output:
@@ -85,6 +68,22 @@ objects:
     paused: false
     revisionHistoryLimit: 2
     minReadySeconds: 0
+- kind: "Service" 
+  apiVersion: "v1"
+  metadata:
+    name: "gocd-server"
+    annotations:
+      description: ""
+  spec:
+    ports:
+      - name: "http"
+        port: 8153
+        targetPort: 8153
+      - name: "https"
+        port: 8154
+        targetPort: 8154
+    selector:
+      app: "gocd-server"
 - kind: Template
   apiVersion: v1
   metadata:
@@ -114,23 +113,8 @@ objects:
       source:
         type: Dockerfile
         dockerfile: |-
-          FROM atbentley/nss-wrapper:centos7
-
-          RUN echo $'[gocd] \n\
-          name     = GoCD YUM Repository\n\
-          baseurl  = https://download.gocd.io\n\
-          enabled  = 1\n\
-          gpgcheck = 1\n\
-          gpgkey   = https://download.gocd.io/GOCD-GPG-KEY.asc' > /etc/yum.repos.d/gocd.repo && \
-          yum install -y java-1.8.0-openjdk git go-agent ${EXTRA_PACKAGES} && yum clean all -y
-
-          RUN chgrp -R 0 /var/lib/go-agent /usr/share/go-agent /var/log/go-agent /etc/default/go-agent /var/run/go-agent && \
-          chmod -R g+rw /var/lib/go-agent /usr/share/go-agent /var/log/go-agent /etc/default/go-agent /var/run/go-agent
-
-          WORKDIR =/usr/share/go-agent
-          ENV DAEMON=N PRODUCTION_MODE=N USER_NAME=go
-
-          CMD ["/usr/share/go-agent/agent.sh"]
+          FROM atbentley/openshift-gocd-agent:latest
+          RUN yum install -y ${EXTRA_PACKAGES} && yum clean all -y
       strategy:
         type: Docker
         env:
