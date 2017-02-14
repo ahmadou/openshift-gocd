@@ -1,0 +1,186 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: gocd-server
+  annotations:
+    openshift.io/display-name: GoCD Server
+    description: 'Create a GoCD Server'
+    tags: ci-cd,gocd
+message: ''
+labels:
+  template: gocd-server
+objects:
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: gocd-server
+    annotations:
+      description: ImageStream for gocd-server
+- kind: BuildConfig
+  apiVersion: v1
+  metadata:
+    name: gocd-server
+  spec:
+    runPolicy: Serial
+    triggers:
+    - type: ConfigChange
+    source:
+      type: Dockerfile
+      dockerfile: |-
+        FROM atbentley/nss-wrapper:centos7
+        EXPOSE 8153 8154
+
+        RUN echo $'[gocd] \n\
+        name     = GoCD YUM Repository\n\
+        baseurl  = https://download.gocd.io\n\
+        enabled  = 1\n\
+        gpgcheck = 1\n\
+        gpgkey   = https://download.gocd.io/GOCD-GPG-KEY.asc' > /etc/yum.repos.d/gocd.repo && \
+        yum install -y java-1.8.0-openjdk git go-server && yum clean all -y
+
+        RUN chgrp -R 0 /var/lib/go-server /etc/go /usr/share/go-server /var/log/go-server /etc/default/go-server && \
+        chmod -R g+rw /var/lib/go-server /etc/go /usr/share/go-server /var/log/go-server /etc/default/go-server
+
+        WORKDIR /var/lib/go-server
+        ENV USER_NAME=go
+
+        CMD ["java", "-jar", "/usr/share/go-server/go.jar"]
+    strategy:
+      type: Docker
+    output:
+      to:
+        kind: ImageStreamTag
+        name: gocd-server:latest
+- kind: DeploymentConfig
+
+  apiVersion: v1
+  metadata:
+    name: gocd-server
+  spec:
+    replicas: 1
+    selector:
+      app: gocd-server
+      deploymentconfig: gocd-server
+    template:
+      metadata:
+        labels:
+          app: gocd-server
+          deploymentconfig: gocd-server
+      spec:
+        containers:
+        - name: gocd-server
+          image: gocd-server
+    triggers:
+    - type: ConfigChange
+    - type: ImageChange
+      imageChangeParams:
+        automatic: true
+        containerNames:
+        - gocd-server
+        from:
+          kind: ImageStreamTag
+          name: gocd-server:latest
+    strategy:
+      type: Rolling
+    paused: false
+    revisionHistoryLimit: 2
+    minReadySeconds: 0
+- kind: Template
+  apiVersion: v1
+  metadata:
+    name: gocd-agent
+    annotations:
+      openshift.io/display-name: GoCD Agent
+      description: ''
+      tags: ci-cd,gocd
+  message: ''
+  labels:
+    template: gocd-agent
+  objects:
+  - kind: ImageStream
+    apiVersion: v1
+    metadata:
+      name: gocd-agent-${NAME}
+      annotations:
+        description: ImageStream for gocd-agent-${NAME}
+  - kind: BuildConfig
+    apiVersion: v1
+    metadata:
+      name: gocd-agent-${NAME}
+    spec:
+      runPolicy: Serial
+      triggers:
+      - type: ConfigChange
+      source:
+        type: Dockerfile
+        dockerfile: |-
+          FROM atbentley/nss-wrapper:centos7
+
+          RUN echo $'[gocd] \n\
+          name     = GoCD YUM Repository\n\
+          baseurl  = https://download.gocd.io\n\
+          enabled  = 1\n\
+          gpgcheck = 1\n\
+          gpgkey   = https://download.gocd.io/GOCD-GPG-KEY.asc' > /etc/yum.repos.d/gocd.repo && \
+          yum install -y java-1.8.0-openjdk git go-agent ${EXTRA_PACKAGES} && yum clean all -y
+
+          RUN chgrp -R 0 /var/lib/go-agent /usr/share/go-agent /var/log/go-agent /etc/default/go-agent /var/run/go-agent && \
+          chmod -R g+rw /var/lib/go-agent /usr/share/go-agent /var/log/go-agent /etc/default/go-agent /var/run/go-agent
+
+          WORKDIR =/usr/share/go-agent
+          ENV DAEMON=N PRODUCTION_MODE=N USER_NAME=go
+
+          CMD ["/usr/share/go-agent/agent.sh"]
+      strategy:
+        type: Docker
+        env:
+        - name: EXTRA_PACKAGES
+          value: "${EXTRA_PACKAGES}"
+      output:
+        to:
+          kind: ImageStreamTag
+          name: gocd-agent-${NAME}:latest
+  - kind: DeploymentConfig
+    apiVersion: v1
+    metadata:
+      name: gocd-agent-${NAME}
+    spec:
+      replicas: 1
+      selector:
+        app: gocd-agent-${NAME}
+        deploymentconfig: gocd-agent-${NAME}
+      template:
+        metadata:
+          labels:
+            app: gocd-agent-${NAME}
+            deploymentconfig: gocd-agent-${NAME}
+        spec:
+          containers:
+          - name: gocd-agent-${NAME}
+            image: gocd-agent-${NAME}
+      triggers:
+      - type: ConfigChange
+      - type: ImageChange
+        imageChangeParams:
+          automatic: true
+          containerNames:
+          - gocd-agent-${NAME}
+          from:
+            kind: ImageStreamTag
+            name: gocd-agent-${NAME}:latest
+      strategy:
+        type: Rolling
+      paused: false
+      revisionHistoryLimit: 2
+      minReadySeconds: 0
+  parameters:
+  - name: NAME
+    displayName: Name
+    description: The name to give this agent, will take the form of gocd-agent-$NAME.
+    required: true
+    value: ''
+  - name: EXTRA_PACKAGES
+    displayName: Extra packages
+    description: A space seperated list of yum packages to install on the agent.
+    required: true
+    value: ''
