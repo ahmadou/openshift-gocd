@@ -9,10 +9,12 @@ gpgcheck = 1\n\
 gpgkey   = https://download.gocd.io/GOCD-GPG-KEY.asc' > /etc/yum.repos.d/gocd.repo && \
 yum install -y java-1.8.0-openjdk git go-server && yum clean all -y
 
-RUN chgrp -R 0 /var/lib/go-server /etc/go /usr/share/go-server /var/log/go-server /etc/default/go-server && \
-chmod -R g+rw /var/lib/go-server /etc/go /usr/share/go-server /var/log/go-server /etc/default/go-server
+ADD start.sh /start.sh
+
+RUN chgrp -R 0 /var/lib/go-server /etc/go /usr/share/go-server /var/log/go-server /etc/default/go-server /var/run/go-server /start.sh && \
+chmod -R g+rw /var/lib/go-server /etc/go /usr/share/go-server /var/log/go-server /etc/default/go-server /var/run/go-server /start.sh
 
 WORKDIR /var/lib/go-server
 ENV USER_NAME=go
 
-CMD ["java", "-jar", "/usr/share/go-server/go.jar"]
+ENTRYPOINT ["/start.sh"]
