@@ -28,8 +28,12 @@ objects:
       type: Dockerfile
       dockerfile: |-
         FROM atbentley/openshift-gocd-server:latest
+        ENV GOCD_AGENT_SECRET=${GOCD_AGENT_SECRET}
     strategy:
       type: Docker
+      env:
+      - name: "GOCD_AGENT_SECRET"
+        value: "${GOCD_AGENT_SECRET}"
     output:
       to:
         kind: ImageStreamTag
@@ -115,11 +119,17 @@ objects:
         dockerfile: |-
           FROM atbentley/openshift-gocd-agent:latest
           RUN yum install -y ${EXTRA_PACKAGES} && yum clean all -y
+          ENV GO_SERVER_URL=${GO_SERVER_URL}
+          ENV GOCD_AGENT_SECRET=${GOCD_AGENT_SECRET}
       strategy:
         type: Docker
         env:
         - name: EXTRA_PACKAGES
           value: "${EXTRA_PACKAGES}"
+        - name: GO_SERVER_URL
+          value: "${GO_SERVER_URL}"
+        - name: "GOCD_AGENT_SECRET"
+          value: "${GOCD_AGENT_SECRET}"
       output:
         to:
           kind: ImageStreamTag
@@ -163,8 +173,19 @@ objects:
     description: The name to give this agent, will take the form of gocd-agent-$NAME.
     required: true
     value: ''
+  - name: GO_SERVER_URL
+    displayName: Go server URL
+    description: The URL for the Go server, needs to start with https:// and end with /go
+    required: true
+    value: ''
   - name: EXTRA_PACKAGES
     displayName: Extra packages
     description: A space seperated list of yum packages to install on the agent.
     required: true
     value: ''
+parameters:
+  - name: GOCD_AGENT_SECRET
+    displayName: GoCD agent secret
+    description: "A secret for allowing agents to authenticate with the server automatically"
+    generate: expression
+    from: "[a-zA-Z0-9]{16}"

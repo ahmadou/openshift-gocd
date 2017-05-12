@@ -8,10 +8,12 @@ gpgcheck = 1\n\
 gpgkey   = https://download.gocd.io/GOCD-GPG-KEY.asc' > /etc/yum.repos.d/gocd.repo && \
 yum install -y java-1.8.0-openjdk git go-agent && yum clean all -y
 
-RUN chgrp -R 0 /var/lib/go-agent /usr/share/go-agent /var/log/go-agent /etc/default/go-agent /var/run/go-agent && \
-chmod -R g+rw /var/lib/go-agent /usr/share/go-agent /var/log/go-agent /etc/default/go-agent /var/run/go-agent
+ADD start.sh /start.sh
 
-WORKDIR =/usr/share/go-agent
+RUN chgrp -R 0 /var/lib/go-agent /usr/share/go-agent /var/log/go-agent /etc/default/go-agent /var/run/go-agent /start.sh && \
+chmod -R g+rw /var/lib/go-agent /usr/share/go-agent /var/log/go-agent /etc/default/go-agent /var/run/go-agent /start.sh
+
+WORKDIR /usr/share/go-agent
 ENV DAEMON=N PRODUCTION_MODE=N USER_NAME=go
 
-CMD ["/usr/share/go-agent/agent.sh"]
+CMD ["/start.sh"]

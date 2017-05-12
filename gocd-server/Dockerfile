@@ -17,4 +17,4 @@ chmod -R g+rw /var/lib/go-server /etc/go /usr/share/go-server /var/log/go-server
 WORKDIR /var/lib/go-server
 ENV USER_NAME=go
 
-ENTRYPOINT ["/start.sh"]
+CMD ["/start.sh"]
